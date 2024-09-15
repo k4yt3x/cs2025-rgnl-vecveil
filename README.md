@@ -4,7 +4,7 @@ A low-entropy shellcode executor achieved by encoding shellcode bytes into commo
 
 When you're doing pentesting, there may come a time when you will need to execute malicious code on a target machine, where malicious executable files will be detected and blocked by NGFWs, EDRs, etc. This is where this too may come in handy. The main lexikon shellcode executor is rather simple and can be unobfuscated. This binary, by itself, does nothing harmful. The real malicious payload would be encoded into English words, and thus, appear to have very low entropy in the eyes of sandboxes and EDRs, allowing the file to pass through.
 
-There might be more efficient ways to achieve this. I made this because it randomly came into my mind on a random Thursday afternoon. Perhaps this could be inspiration for something greater.
+Will Summerhill [Simplified Malware Development - Entropy and Other Techniques](https://youtu.be/F6R-YPsjpVY?t=13597)
 
 ## Usages
 

