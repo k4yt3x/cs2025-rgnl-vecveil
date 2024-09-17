@@ -1,4 +1,4 @@
-.PHONY: all build debug shellcode clean
+.PHONY: all payload build debug genhash clean
 
 SRCDIR=src
 BINDIR=bin
@@ -15,30 +15,29 @@ else
     DJB2_FLAG=
 endif
 
-all: shellcode build
+all: payload build genhash
+
+payload:
+	mkdir -p $(BINDIR) $(OBJDIR)
+	nasm -f elf64 src/challenge.nasm -o $(OBJDIR)/challenge.o
+	ld -lc -o bin/challenge.bin -N -Ttext 0x0 --oformat binary $(OBJDIR)/challenge.o
+	python3 tools/encoder.py bin/challenge.bin
 
 build:
 	mkdir -p $(BINDIR)
-	gcc $(CFLAGS) $(DJB2_FLAG) -Ofast -s $(SRCDIR)/lexikon.c -o $(BINDIR)/lexikon
+	gcc $(CFLAGS) $(DJB2_FLAG) -Ofast -s $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
 
 debug:
 	mkdir -p $(BINDIR)
-	gcc $(CFLAGS) $(DJB2_FLAG) -g -DDEBUG $(SRCDIR)/lexikon.c \
+	gcc $(CFLAGS) $(DJB2_FLAG) -g -DDEBUG $(SRCDIR)/lexicon.c \
 		-no-pie -fno-stack-protector -Wl,-z,norelro -z execstack \
-		-o $(BINDIR)/lexikon
+		-o $(BINDIR)/lexicon
 
-validator:
+genhash:
 	mkdir -p $(BINDIR)
-	gcc $(CFLAGS) $(DJB2_FLAG) -nostartfiles -Ofast -mavx2 -s \
-		$(SRCDIR)/validator.c -o $(BINDIR)/validator
-
-shellcode:
-	mkdir -p $(BINDIR)
-	mkdir -p $(OBJDIR)
-	nasm -f elf64 src/challenge.nasm -o $(OBJDIR)/challenge.o
-	ld -o bin/challenge.bin -N -Ttext 0x0 --oformat binary $(OBJDIR)/challenge.o
-	python3 tools/encoder.py bin/challenge.bin
+	nasm -f elf64 -g -F dwarf $(SRCDIR)/genhash.nasm -o $(OBJDIR)/genhash.o
+	ld -lc -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o $(BINDIR)/genhash $(OBJDIR)/genhash.o
 
 clean:
-	rm -f $(SRCDIR)/*.o $(BINDIR)/lexikon
+	rm -f $(SRCDIR)/*.o $(BINDIR)/lexicon
 

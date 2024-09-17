@@ -1,13 +1,5 @@
-# Lexikon
+# Lexicon
 
-A low-entropy shellcode executor achieved by encoding shellcode bytes into common English words.
+For the 45th Canadian federal election in 2025, Canada has implemented a new cutting-edge digital voting system. Each registered voter receives a unique digital code in advance to streamline identity verification at polling stations, thereby enhancing both efficiency and security. Voting machines are deployed nationwide. Despite stringent oversight of these machines, additional measures have been incorporated into the software to ensure it remains challenging for unauthorized individuals to uncover how the authentication code is calculated, even if they somehow gain access to the machines.
 
-When you're doing pentesting, there may come a time when you will need to execute malicious code on a target machine, where malicious executable files will be detected and blocked by NGFWs, EDRs, etc. This is where this too may come in handy. The main lexikon shellcode executor is rather simple and can be unobfuscated. This binary, by itself, does nothing harmful. The real malicious payload would be encoded into English words, and thus, appear to have very low entropy in the eyes of sandboxes and EDRs, allowing the file to pass through.
-
-Will Summerhill [Simplified Malware Development - Entropy and Other Techniques](https://youtu.be/F6R-YPsjpVY?t=13597)
-
-## Usages
-
-1. Compile your shellcode into a binary file. An example is available at `examples/shellcode.c`. This example code can be compiled by Binary Ninja's [SCC](https://scc.binary.ninja/).
-2. Use the encoder at `tools/encoder.py` to encode the shellcode bytes into a sequence of English words. Save its output to a text file. We will use `dict.txt` as an example here.
-3. Build the Lexikon binary and execute the shellcode by running `lexikon dict.txt`.
+You have been hired as a third-party security consultant to analyze the binary file that verifies the voter's name against the authentication code to ensure it has an adequate level of security. There are two stages to this challenge. In the first stage, you are to determine how the program "unpacks" its code; in the second stage, you are to find the authentication code for Pierre Poilievre so you can vote as him for Justin Trudeau.
