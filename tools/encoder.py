@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 import sys
 
-HEADER = """#ifndef SHELLCODE_H
-#define SHELLCODE_H
+HEADER = """#ifndef PAYLOAD_H
+#define PAYLOAD_H
 
-const char *SHELLCODE[] = {{{}}};
+const char *PAYLOAD[] = {{{}}};
 
-#endif // SHELLCODE_H
+#endif // PAYLOAD_H
 """
 
 # fmt: off
@@ -50,16 +50,16 @@ LOOKUP_TABLE = [
 
 # Make sure the lookup table has 256 words
 assert len(LOOKUP_TABLE) == 256
-assert len(sys.argv) == 2, "Usage: python encoder.py <shellcode.bin>"
+assert len(sys.argv) == 2, "Usage: python encoder.py <payload.bin>"
 
-# Read the shellcode bytes from the file
-with open(sys.argv[1], "rb") as shellcode_file:
-    shellcode = shellcode_file.read()
+# Read the payload bytes from the file
+with open(sys.argv[1], "rb") as payload_file:
+    payload = payload_file.read()
 
-# Convert the shellcode bytes to English words and print them
+# Convert the payload bytes to English words and print them
 words = []
-for index, byte in enumerate(shellcode):
+for index, byte in enumerate(payload):
     words.append(f'"{LOOKUP_TABLE[byte]}"')
 
-with open("include/shellcode.h", "w") as shellcode_file:
-    shellcode_file.write(HEADER.format(", ".join(words)))
+with open("include/payload.h", "w") as payload_file:
+    payload_file.write(HEADER.format(", ".join(words)))

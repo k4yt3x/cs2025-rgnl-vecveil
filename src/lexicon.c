@@ -1,4 +1,4 @@
-#include "../include/shellcode.h"
+#include "../include/payload.h"
 
 #include <assert.h>
 #include <fcntl.h>
@@ -171,7 +171,7 @@ static inline __attribute__((always_inline)) uint8_t find_hex_value(const char *
 
 int main(int argc, char *argv[]) {
     // Calculate the size of the shellcode
-    long code_size = sizeof(SHELLCODE) / sizeof(SHELLCODE[0]);
+    long code_size = sizeof(PAYLOAD) / sizeof(PAYLOAD[0]);
 
     // Allocate executable memory
     uint8_t *executable_memory = mmap(
@@ -183,10 +183,10 @@ int main(int argc, char *argv[]) {
     }
 
     size_t offset = 0;
-    for (int i = 0; i < sizeof(SHELLCODE) / sizeof(SHELLCODE[0]); i++) {
-        uint8_t hex_value = find_hex_value(SHELLCODE[i]);
+    for (int i = 0; i < sizeof(PAYLOAD) / sizeof(PAYLOAD[0]); i++) {
+        uint8_t hex_value = find_hex_value(PAYLOAD[i]);
 #ifdef DEBUG
-        printf("%s -> 0x%02x\n", SHELLCODE[i], hex_value);
+        printf("%s -> 0x%02x\n", PAYLOAD[i], hex_value);
 #endif
         executable_memory[offset++] = hex_value;
     }
