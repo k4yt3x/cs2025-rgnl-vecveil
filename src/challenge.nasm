@@ -22,7 +22,7 @@ _start:
     vcvtsi2ss xmm1, xmm1, rax
     lea rax, [rel .name]
     vucomiss xmm0, xmm1
-    cmovnz rax, rsp
+    cmovnz rax, rsp ; Jump to $rsp if a debugger is attached
     jmp rax
     db 0xE8
 
@@ -111,11 +111,11 @@ _start:
 
     vcvtsi2ss xmm2, xmm2, rdx
     vucomiss xmm1, xmm2
-    jb .toolong1
+    jb .invlen1
 
     ; Check if we need to read more bytes
     cmp byte [rsi+rdx-1], 10
-    je .toolong1
+    je .invlen1
     jmp .overflow1
 
 .nempty:
@@ -178,12 +178,12 @@ _start:
 
     ; After reading all remaining bytes, print an error message
     vucomiss xmm1, xmm2
-    jb .toolong1
+    jb .invlen1
 
     cmp byte [rsi+rdx-1], 10
     jne .overflow1
 
-.toolong1:
+.invlen1:
     ; Setup for write to stdout
     vpxor ymm0, ymm0, ymm0
     vpcmpeqd ymm1, ymm0, ymm0
@@ -295,7 +295,7 @@ _start:
     vpextrq rdx, xmm2, 0
     syscall
 
-    ; Check if the bytes read are less than 21
+    ; Check if the bytes read are less than 11
     vzeroall
     vcvtsi2ss xmm1, xmm1, rax ; xmm1 contains the number of bytes read
 
@@ -307,20 +307,20 @@ _start:
     vucomiss xmm1, xmm2
     jbe .tempty
 
-    mov rbx, 0x41a80000 ; 21 in float
+    mov rbx, 0x41300000 ; 11 in float
     vmovq xmm2, rbx
 
-    ; If we read more than 21 bytes, the input is invalid
+    ; If we read more than 11 bytes, the input is invalid
     vucomiss xmm1, xmm2
     jbe .atoi
 
     vcvtsi2ss xmm2, xmm2, rdx
     vucomiss xmm1, xmm2
-    jb .toolong2
+    jb .invlen2
 
     ; Check if we need to read more bytes
     cmp byte [rsi+rdx-1], 10
-    je .toolong2
+    je .invlen2
     jmp .overflow2
 
 .tempty:
@@ -383,12 +383,12 @@ _start:
 
     ; After reading all remaining bytes, print an error message
     vucomiss xmm1, xmm2
-    jb .toolong2
+    jb .invlen2
 
     cmp byte [rsi+rdx-1], 10
     jne .overflow2
 
-.toolong2:
+.invlen2:
     ; Setup for write to stdout
     vpxor ymm0, ymm0, ymm0
     vpcmpeqd ymm1, ymm0, ymm0
@@ -403,7 +403,7 @@ _start:
     vcvttps2dq xmm2, xmm2
     vpextrq rdx, xmm2, 0
 
-    ; "Tokens can contain at most 20 characters.\n"
+    ; "Tokens can contain at most 10 characters.\n"
     mov rbx, 0x656b6f54
     vmovq xmm3, rbx
     vmovss dword [rsp-48], xmm3
@@ -422,7 +422,7 @@ _start:
     mov rbx, 0x6f6d2074
     vmovq xmm3, rbx
     vmovss dword [rsp-28], xmm3
-    mov rbx, 0x32207473
+    mov rbx, 0x31207473
     vmovq xmm3, rbx
     vmovss dword [rsp-24], xmm3
     mov rbx, 0x68632030
@@ -461,35 +461,30 @@ _start:
 
 ; Verify if the password is correct
 .verify:
-    mov dword [rsp-200], 0x3fe66666
-    mov dword [rsp-204], 0x3fd9999a
-    mov dword [rsp-208], 0x3fcccccd
-    mov dword [rsp-212], 0x3fc00000
-    mov dword [rsp-216], 0x3fb33333
-    mov dword [rsp-220], 0x3fa66666
-    mov dword [rsp-224], 0x3f99999a
-    mov dword [rsp-228], 0x3f8ccccd
+    vmovd xmm0, [rel .fnv1a_offset_basis] ; xmm0 contains FNV-1a offset basis
+    vmovd xmm1, [rel .fnv1a_prime] ; xmm1 contains FNV-1a prime
+    vpxor xmm3, xmm3, xmm3
+    lea rdi, [rsp-128]
 
-    ; Load name into ymm0
-    vmovdqu ymm0, [rsp-128]
+.fnv1a_loop:
+    vpxor xmm4, xmm4, xmm4
+    vpinsrb xmm4, xmm4, byte [rdi], 0
+    vptest xmm4, xmm4
+    jz .fnv1a_done
+    vpxor xmm2, xmm2, xmm2
+    vpinsrb xmm2, xmm2, byte [rdi], 0
+    vpxor xmm0, xmm0, xmm2
+    vpmulld xmm0, xmm0, xmm1
+    inc rdi
+    jmp .fnv1a_loop
 
-    vextracti128 xmm0, ymm0, 0
-    vpmovzxbw xmm1, xmm0
-    vpmovzxwd ymm2, xmm1
-    vcvtdq2ps ymm3, ymm2
-    vmovups ymm4, [rsp-228]
-    vmulps ymm3, ymm3, ymm4
-    vextractf128 xmm5, ymm3, 0 ; Lower 128 bits
-    vextractf128 xmm6, ymm3, 1 ; Upper 128 bits
-    vhaddps xmm5, xmm5, xmm5 ; Horizontal add
-    vhaddps xmm5, xmm5, xmm5
-    vhaddps xmm6, xmm6, xmm6
-    vhaddps xmm6, xmm6, xmm6
-    vaddps xmm7, xmm5, xmm6 ; Combine sums
-    vpextrq rax, xmm7, 0
-    vmovq xmm5, rbx
-    vucomiss xmm5, xmm7
-    je .correct
+.fnv1a_done:
+    vmovd xmm1, [rel .xor_key]
+    vpxor xmm0, xmm0, xmm1
+    vmovq xmm1, rbx
+    vpxor xmm0, xmm0, xmm1
+    vptest xmm0, xmm0
+    jz .correct
 
 .incorrect:
     vpxor ymm0, ymm0, ymm0
@@ -505,7 +500,7 @@ _start:
     vcvttps2dq xmm3, xmm3
     vpextrq rdx, xmm3, 0
 
-    ; "Invalid token proivded.\n"
+    ; "Invalid token provided.\n"
     mov rbx, 0x61766e49
     vmovq xmm3, rbx
     vmovss dword [rsp-32], xmm3
@@ -529,6 +524,17 @@ _start:
     syscall
 
 .exit1:
+    ; add rsp, 256
+    mov rax, 0x43800000
+    vmovq xmm0, rax
+    vcvttps2dq xmm0, xmm0
+    vinserti128 ymm0, ymm0, xmm0, 0
+
+    vmovq xmm1, rsp
+    vinserti128 ymm1, ymm1, xmm1, 0
+    vpaddq ymm1, ymm1, ymm0
+    vmovq rsp, xmm1
+
     ; exit(1)
     mov rax, 0x42700000
     vmovq xmm1, rax
@@ -588,6 +594,17 @@ _start:
     syscall
 
 .exit0:
+    ; add rsp, 256
+    mov rax, 0x43800000
+    vmovq xmm0, rax
+    vcvttps2dq xmm0, xmm0
+    vinserti128 ymm0, ymm0, xmm0, 0
+
+    vmovq xmm1, rsp
+    vinserti128 ymm1, ymm1, xmm1, 0
+    vpaddq ymm1, ymm1, ymm0
+    vmovq rsp, xmm1
+
     ; exit(0)
     mov rax, 0x42700000
     vmovq xmm1, rax
@@ -596,3 +613,21 @@ _start:
     vxorps xmm1, xmm1, xmm1
     vpextrq rdi, xmm1, 0
     syscall
+
+; Below is used as the .data section to store static data
+; RIP will never reach below this point
+
+; If the participants change this byte to 0xC3 (ret)
+; IDA will be able to generate a CFG for the code above
+.helper_byte:
+    db 0
+
+.xor_key:
+    db "CYBERSCI_REGIONALS_2025"
+
+.fnv1a_offset_basis:
+    dd 2166136261
+
+.fnv1a_prime:
+    dd 16777619
+

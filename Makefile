@@ -36,7 +36,7 @@ debug:
 genhash:
 	mkdir -p $(BINDIR)
 	nasm -f elf64 -g -F dwarf $(SRCDIR)/genhash.nasm -o $(OBJDIR)/genhash.o
-	ld -lc -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o $(BINDIR)/genhash $(OBJDIR)/genhash.o
+	ld -lc -I /lib64/ld-linux-x86-64.so.2 -o $(BINDIR)/genhash $(OBJDIR)/genhash.o
 
 clean:
 	rm -f $(SRCDIR)/*.o $(BINDIR)/lexicon

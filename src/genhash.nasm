@@ -1,10 +1,12 @@
 section .data
-    fmt db 'Hash: %lu', 10, 0
+    hex_fmt db 'Hash (%%X): %X', 10, 0
+    dword_fmt db 'Hash (%%u): %u', 10, 0
     err_usage db 'Usage: genhash <NAME>', 10, 0
-    const dd 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8
+    align 16
+    xor_key db "CYBERSCIREGIONAL"
 
 section .bss
-    name resb 32                          ; Reserve 32 bytes for the name input
+    name resb 32
 
 section .text
     global _start
@@ -12,98 +14,90 @@ section .text
 
 _start:
     ; Get argc from the stack
-    mov rax, [rsp]                        ; argc is at [rsp]
-    cmp rax, 2                            ; Check if argc >= 2
-    je proceed                           ; If yes, proceed
+    mov rax, [rsp] ; argc
+    cmp rax, 2
+    je proceed
 
     ; argc < 2, print usage message
-    sub rsp, 8                            ; Align stack
-    lea rdi, [rel err_usage]              ; Load usage message
-    xor rax, rax                          ; Clear rax
+    sub rsp, 8
+    lea rdi, [rel err_usage]
+    xor rax, rax
     call printf
-    add rsp, 8                            ; Restore stack
+    add rsp, 8
 
-    ; Exit the program
-    mov rax, 60                           ; sys_exit system call
-    xor rdi, rdi                          ; Exit code 0
+    ; exit(0)
+    mov rax, 60
+    xor rdi, rdi
     syscall
 
 proceed:
     ; Load argv[1] into rsi
-    mov rsi, [rsp + 16]                   ; argv[1] is at [rsp + 16]
+    mov rsi, [rsp + 16]
 
     ; Zero the 'name' buffer
-    vpxor ymm0, ymm0, ymm0                ; Zero ymm0 register
-    vmovdqu [rel name], ymm0              ; Zero first 32 bytes of 'name'
+    vpxor ymm0, ymm0, ymm0
+    vmovdqu [rel name], ymm0
 
     ; Copy argv[1] into 'name' buffer, zero-padded up to 32 bytes
-    mov rcx, 32                           ; Max 32 bytes to copy
-    lea rdi, [rel name]                   ; Destination buffer 'name'
-    ; rsi already points to argv[1]       ; Source string
+    mov rcx, 32
+    lea rdi, [rel name]
+
 copy_loop:
     cmp rcx, 0
-    je copy_done                          ; If rcx == 0, we're done
-    mov al, byte [rsi]                    ; Load byte from source
-    mov byte [rdi], al                    ; Store byte to destination
+    je copy_done
+    mov al, byte [rsi]
+    mov byte [rdi], al
     cmp al, 0
-    je copy_done                          ; If null terminator, done
-    inc rsi                               ; Increment source pointer
-    inc rdi                               ; Increment destination pointer
-    dec rcx                               ; Decrement counter
+    je copy_done
+    inc rsi
+    inc rdi
+    dec rcx
     jmp copy_loop
 
 copy_done:
-    ; Load the string into ymm0 using AVX2 instruction
-    vmovdqu ymm0, [rel name]
+    mov rax, 2166136261
+    vmovq xmm0, rax ; xmm0 contains FNV-1a offset basis
+    mov rax, 16777619
+    vmovq xmm1, rax ; xmm1 contains FNV-1a prime
+    vpxor xmm3, xmm3, xmm3
+    lea rdi, [rel name]
 
-    ; Extract lower 128 bits of ymm0 into xmm0
-    vextracti128 xmm0, ymm0, 0
+fnv1a_loop:
+    movzx rax, byte [rdi]
+    vmovq xmm4, rax
+    vptest xmm4, xmm4
+    je fnv1a_done
+    vmovq xmm2, rax
+    vpxor xmm0, xmm0, xmm2
+    vpmulld xmm0, xmm0, xmm1
+    inc rdi
+    jmp fnv1a_loop
 
-    ; Zero-extend bytes to words (16-bit integers)
-    vpmovzxbw xmm1, xmm0
+fnv1a_done:
+    vmovd xmm1, [rel xor_key]
+    vpxor xmm0, xmm0, xmm1
+    vpextrq rbx, xmm0, 0
 
-    ; Zero-extend words to doublewords (32-bit integers)
-    vpmovzxwd ymm2, xmm1
+    ; Align stack
+    sub rsp, 8
 
-    ; Convert packed 32-bit integers to single-precision floats
-    vcvtdq2ps ymm3, ymm2
-
-    ; Load constants into ymm4
-    vmovups ymm4, [rel const]
-
-    ; Perform floating-point multiplication
-    vmulps ymm3, ymm3, ymm4
-
-    ; Sum the elements in ymm3
-    vextractf128 xmm5, ymm3, 0            ; Lower 128 bits
-    vextractf128 xmm6, ymm3, 1            ; Upper 128 bits
-
-    vhaddps xmm5, xmm5, xmm5              ; Horizontal add
-    vhaddps xmm5, xmm5, xmm5
-    vhaddps xmm6, xmm6, xmm6
-    vhaddps xmm6, xmm6, xmm6
-
-    vaddps xmm7, xmm5, xmm6               ; Combine sums
-
-    ; Convert the floating-point sum to integer
-    vpextrq rax, xmm7, 0
-
-    ; Prepare for calling printf (align stack)
-    sub rsp, 8                            ; Align stack
-
-    ; Set up arguments for printf
-    lea rdi, [rel fmt]                    ; Format string
-    mov rsi, rax                          ; Integer value to print
-    xor rax, rax                          ; Clear rax for variadic function
-
-    ; Call printf
+    ; Print the hash value as hex
+    lea rdi, [rel hex_fmt]
+    mov rsi, rbx
+    xor rax, rax
     call printf
 
-    ; Clean up stack
-    add rsp, 8                            ; Restore stack alignment
+    ; Print the hash value as qword
+    lea rdi, [rel dword_fmt]
+    mov rsi, rbx
+    xor rax, rax
+    call printf
 
-    ; Exit the program
-    mov rax, 60                           ; sys_exit system call
-    xor rdi, rdi                          ; Exit code 0
+    ; Clean up the stack
+    add rsp, 8
+
+    ; exit(0)
+    mov rax, 60
+    xor rdi, rdi
     syscall
 
