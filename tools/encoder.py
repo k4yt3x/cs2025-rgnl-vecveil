@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 import sys
 
-HEADER = """#ifndef PAYLOAD_H
-#define PAYLOAD_H
+HEADER = """#ifndef SHELLCODE_H
+#define SHELLCODE_H
 
-const char *PAYLOAD[] = {{{}}};
+const char *SHELLCODE[] = {{{}}};
 
-#endif // PAYLOAD_H
+#endif // SHELLCODE_H
 """
 
 # fmt: off
@@ -50,7 +50,7 @@ LOOKUP_TABLE = [
 
 # Make sure the lookup table has 256 words
 assert len(LOOKUP_TABLE) == 256
-assert len(sys.argv) == 2, "Usage: python encoder.py <payload.bin>"
+assert len(sys.argv) == 3, "Usage: python encoder.py <payload.bin> <shellcode.h>"
 
 # Read the payload bytes from the file
 with open(sys.argv[1], "rb") as payload_file:
@@ -61,5 +61,5 @@ words = []
 for index, byte in enumerate(payload):
     words.append(f'"{LOOKUP_TABLE[byte]}"')
 
-with open("include/payload.h", "w") as payload_file:
+with open(sys.argv[2], "w", encoding="utf-8") as payload_file:
     payload_file.write(HEADER.format(", ".join(words)))

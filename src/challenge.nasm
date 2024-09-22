@@ -4,29 +4,6 @@ section .text
     global _start
 
 _start:
-    ; Use ptrace to detect if a debugger is attached
-    mov rax, 0x42ca0000 ; PTRACE_TRACEME (101) in float
-    vmovq xmm0, rax
-    vcvttps2dq xmm0, xmm0
-    vpextrq rax, xmm0, 0
-    vzeroall
-    vmovq rdi, xmm0
-    vmovq rsi, xmm0
-    vmovq rdx, xmm0
-    vmovq r10, xmm0
-    syscall
-
-    ; Jump to the entry point if no debugger is attached (rax == 0)
-    ; Jump to the stack (invalid) if a debugger is attached (rax != 0)
-    vxorps ymm1, ymm1, ymm1
-    vcvtsi2ss xmm1, xmm1, rax
-    lea rax, [rel .name]
-    vucomiss xmm0, xmm1
-    cmovnz rax, rsp ; Jump to $rsp if a debugger is attached
-    jmp rax
-    db 0xE8
-
-.name:
     ; Allocate 256 bytes on the stack
     ; sub rsp, 256
     mov rax, 0x43800000
@@ -39,6 +16,136 @@ _start:
     vpsubq ymm1, ymm1, ymm0
     vmovq rsp, xmm1
 
+    ; Allow the current process to be traced by any process
+    ; This allows the program to work when `kernel.yama.ptrace_scope` is set to 1
+    ; prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY)
+    mov rax, 0x431d0000 ; prctl (157) in float
+    vmovq xmm0, rax
+    vcvttps2dq xmm0, xmm0
+    vpextrq rax, xmm0, 0
+
+    mov rdi, 0x59616d61 ; PR_SET_PTRACER
+    mov rsi, 0xffffffffffffffff ; PR_SET_PTRACER_ANY
+    vxorps ymm2, ymm2, ymm2
+    vmovq rdx, xmm2; arg3
+    vmovq r10, xmm2; arg4
+    vmovq r9, xmm2; arg5
+    syscall
+
+    ; Fork to a new process to run ptrace on the parent
+    mov rax, 0x42640000
+    vmovq xmm0, rax
+    vcvttps2dq xmm0, xmm0
+    vmovq rax, xmm0
+    syscall
+    mov rbx, rax ; rbx in parent contains child PID
+    test rbx, rbx
+    jne .parent
+
+.child:
+    ; Get parent PID
+    mov rax, 0x42dc0000 ; PTRACE_GETPPID (110) in float
+    vmovq xmm0, rax
+    vcvttps2dq xmm0, xmm0
+    vpextrq rax, xmm0, 0
+    syscall
+    mov rbx, rax ; rbx in child contains parent PID
+
+    ; Use ptrace to trace parent to detect if a debugger is attached
+    ; mov rax, 101
+    mov rax, 0x42ca0000 ; ptrace (101) in float
+    vmovq xmm0, rax
+    vcvttps2dq xmm0, xmm0
+    vpextrq rax, xmm0, 0
+
+    ; mov rdi, 16 ; request
+    mov rdi, 0x41800000 ; PTRACE_ATTACH (16) in float
+    vmovq xmm0, rdi
+    vcvttps2dq xmm0, xmm0
+    vpextrq rdi, xmm0, 0
+    mov rsi, rbx ; pid
+    vpxor ymm2, ymm2, ymm2
+    vmovq rdx, xmm2 ; addr
+    vmovq r10, xmm2 ; data
+    syscall
+
+    ; Check if PTRACE_ATTACH was successful
+    vxorps ymm1, ymm1, ymm1
+    vcvtsi2ss xmm1, xmm1, rax
+    vptest xmm1, xmm1
+    jne .exit1
+
+    ; No debugger attached, resume parent process
+    ; wait4(ppid, NULL, 0, NULL)
+    mov rax, 0x42740000 ; wait4 (61) in float
+    vmovq xmm0, rax
+    vcvttps2dq xmm0, xmm0
+    vpextrq rax, xmm0, 0
+    mov rdi, rbx ; upid = ppid
+    vmovq rsi, xmm2
+    vmovq rdx, xmm2
+    vmovq r10, xmm2
+    syscall
+
+    ; ptrace(PTRACE_CONT, ppid, NULL, NULL)
+    ; mov rax, 101
+    mov rax, 0x42ca0000 ; ptrace (101) in float
+    vmovq xmm0, rax
+    vcvttps2dq xmm0, xmm0
+    vpextrq rax, xmm0, 0
+
+    ; mov rdi, 7 ; request
+    mov rdi, 0x40e00000 ; PTRACE_CONT (7) in float
+    vmovq xmm0, rdi
+    vcvttps2dq xmm0, xmm0
+    vpextrq rdi, xmm0, 0
+    mov rsi, rbx ; pid
+    vmovq rdx, xmm2 ; addr
+    vmovq r10, xmm2 ; data
+    syscall
+
+    ; ptrace(PTRACE_DETACH, ppid, NULL, NULL)
+    ; mov rax, 101
+    mov rax, 0x42ca0000 ; ptrace (101) in float
+    vmovq xmm0, rax
+    vcvttps2dq xmm0, xmm0
+    vpextrq rax, xmm0, 0
+
+    ; mov rdi, 17 ; request
+    mov rdi, 0x41880000 ; PTRACE_DETACH (17) in float
+    vmovq xmm0, rdi
+    vcvttps2dq xmm0, xmm0
+    vpextrq rdi, xmm0, 0
+    mov rsi, rbx ; pid
+    vmovq rdx, xmm2 ; addr
+    vmovq r10, xmm2 ; data
+    syscall
+
+    ; exit(0)
+    jmp .exit0
+
+.parent:
+    ; wait4(pid, [rsp-8], 0, NULL)
+    mov rax, 0x42740000 ; wait4 (61) in float
+    vmovq xmm0, rax
+    vcvttps2dq xmm0, xmm0
+    vpextrq rax, xmm0, 0
+    mov rdi, rbx ; upid = pid
+    lea rsi, [rsp-8] ; status
+    vxorps ymm2, ymm2, ymm2
+    vmovq rdx, xmm2
+    vmovq r10, xmm2
+    syscall
+
+    ; Check the exit code of the child process
+    ; Jump to an invalid address if debugger is detected
+    lea rax, [rel .name]
+    vmovss xmm0, [rsp-8]
+    vptest xmm0, xmm0
+    cmovne rax, rsp
+    jmp rax
+
+.name:
     ; Setup for write to stdout
     vpxor ymm0, ymm0, ymm0
     vpcmpeqd ymm1, ymm0, ymm0
@@ -459,10 +566,10 @@ _start:
     cmp byte [rdi], 0
     jne .atoiloop
 
-; Verify if the password is correct
+; Verify if the password is correct with FNV-1a and XOR
 .verify:
-    vmovd xmm0, [rel .fnv1a_offset_basis] ; xmm0 contains FNV-1a offset basis
-    vmovd xmm1, [rel .fnv1a_prime] ; xmm1 contains FNV-1a prime
+    vmovd xmm0, [rel .fnv1a_offset_basis]
+    vmovd xmm1, [rel .fnv1a_prime]
     vpxor xmm3, xmm3, xmm3
     lea rdi, [rsp-128]
 
