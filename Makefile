@@ -6,24 +6,26 @@ BINDIR=bin
 OBJDIR=obj
 CFLAGS=-Wall -fPIC -I$(INCDIR)
 
-# DJB2 hashing lookup
-DJB2=1
-
 # specify DJB2=1 to enable DJB2 hashing lookup
+DJB2=1
 ifeq ($(DJB2), 1)
-    DJB2_FLAG=-DDJB2
-else
-    DJB2_FLAG=
+	CFLAGS+=-DDJB2
+endif
+
+# specify NOSIGNAL=1 to disable signal handler abuse
+NOSIGNAL=0
+ifeq ($(NOSIGNAL), 1)
+	CFLAGS+=-DNOSIGNAL
 endif
 
 fast: prepare shellcode genhash
-	gcc $(CFLAGS) $(DJB2_FLAG) -Ofast -s $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
+	gcc $(CFLAGS) -Ofast -s $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
 
 build: prepare shellcode genhash
-	gcc $(CFLAGS) $(DJB2_FLAG) -s $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
+	gcc $(CFLAGS) -s $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
 
 debug: prepare shellcode genhash
-	gcc $(CFLAGS) $(DJB2_FLAG) -g -DDEBUG $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
+	gcc $(CFLAGS) -g -DDEBUG $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
 
 shellcode: prepare
 	nasm -f elf64 src/challenge.nasm -o $(OBJDIR)/challenge.o

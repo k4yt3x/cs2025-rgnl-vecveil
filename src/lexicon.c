@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(NOSIGNAL)
     if (sigsetjmp(g_jump_buffer, 1) == 0) {
         decode_shellcode_bytes(0);
     }
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     // Cast executable memory to a function pointer and execute
-    // void (*shellcode)() = (void (*)())executable_memory;
+    // void (*shellcode)() = (void (*)())g_executable_memory;
     // shellcode();
 
     // Overwrite the return address with the address of the shellcode

@@ -148,10 +148,10 @@ _start:
 .name:
     ; Setup for write to stdout
     vpxor ymm0, ymm0, ymm0
-    vpcmpeqd ymm1, ymm0, ymm0
-    vpsrld ymm1, ymm1, 31
-    vpextrq rax, xmm1, 0
-    vpextrq rdi, xmm1, 0
+    vpcmpeqd ymm0, ymm0, ymm0
+    vpsrld ymm0, ymm0, 31
+    vpextrq rax, xmm0, 0
+    vpextrq rdi, xmm0, 0
     lea rsi, [rsp-28]
 
     ; mov rdx, 24
@@ -203,10 +203,10 @@ _start:
 
     ; Check if the input is empty
     vpxor ymm0, ymm0, ymm0
-    vpcmpeqd ymm2, ymm0, ymm0
-    vpsrld ymm2, ymm2, 31
-    vcvtdq2ps  xmm2, xmm2
-    vucomiss xmm1, xmm2
+    vpcmpeqd ymm0, ymm0, ymm0
+    vpsrld ymm0, ymm0, 31
+    vcvtdq2ps  xmm0, xmm0
+    vucomiss xmm1, xmm0
     jbe .nempty
 
     mov rbx, 0x42040000 ; 33 in float
@@ -228,10 +228,10 @@ _start:
 .nempty:
     ; Setup for write to stdout
     vpxor ymm0, ymm0, ymm0
-    vpcmpeqd ymm1, ymm0, ymm0
-    vpsrld ymm1, ymm1, 31
-    vpextrq rax, xmm1, 0
-    vpextrq rdi, xmm1, 0
+    vpcmpeqd ymm0, ymm0, ymm0
+    vpsrld ymm0, ymm0, 31
+    vpextrq rax, xmm0, 0
+    vpextrq rdi, xmm0, 0
     lea rsi, [rsp-28]
 
     ; mov rdx, 22
@@ -293,10 +293,10 @@ _start:
 .invlen1:
     ; Setup for write to stdout
     vpxor ymm0, ymm0, ymm0
-    vpcmpeqd ymm1, ymm0, ymm0
-    vpsrld ymm1, ymm1, 31
-    vpextrq rax, xmm1, 0
-    vpextrq rdi, xmm1, 0
+    vpcmpeqd ymm0, ymm0, ymm0
+    vpsrld ymm0, ymm0, 31
+    vpextrq rax, xmm0, 0
+    vpextrq rdi, xmm0, 0
     lea rsi, [rsp-48]
 
     ; mov rdx, 41
@@ -350,10 +350,10 @@ _start:
 
     ; Setup for write to stdout
     vpxor ymm0, ymm0, ymm0
-    vpcmpeqd ymm1, ymm0, ymm0
-    vpsrld ymm1, ymm1, 31
-    vpextrq rax, xmm1, 0
-    vpextrq rdi, xmm1, 0
+    vpcmpeqd ymm0, ymm0, ymm0
+    vpsrld ymm0, ymm0, 31
+    vpextrq rax, xmm0, 0
+    vpextrq rdi, xmm0, 0
     lea rsi, [rsp-30]
 
     ; mov rdx, 25
@@ -408,10 +408,10 @@ _start:
 
     ; Check if the input is empty
     vpxor ymm0, ymm0, ymm0
-    vpcmpeqd ymm2, ymm0, ymm0
-    vpsrld ymm2, ymm2, 31
-    vcvtdq2ps  xmm2, xmm2
-    vucomiss xmm1, xmm2
+    vpcmpeqd ymm0, ymm0, ymm0
+    vpsrld ymm0, ymm0, 31
+    vcvtdq2ps  xmm0, xmm0
+    vucomiss xmm1, xmm0
     jbe .tempty
 
     mov rbx, 0x41300000 ; 11 in float
@@ -433,10 +433,10 @@ _start:
 .tempty:
     ; Setup for write to stdout
     vpxor ymm0, ymm0, ymm0
-    vpcmpeqd ymm1, ymm0, ymm0
-    vpsrld ymm1, ymm1, 31
-    vpextrq rax, xmm1, 0
-    vpextrq rdi, xmm1, 0
+    vpcmpeqd ymm0, ymm0, ymm0
+    vpsrld ymm0, ymm0, 31
+    vpextrq rax, xmm0, 0
+    vpextrq rdi, xmm0, 0
     lea rsi, [rsp-28]
 
     ; mov rdx, 23
@@ -498,10 +498,10 @@ _start:
 .invlen2:
     ; Setup for write to stdout
     vpxor ymm0, ymm0, ymm0
-    vpcmpeqd ymm1, ymm0, ymm0
-    vpsrld ymm1, ymm1, 31
-    vpextrq rax, xmm1, 0
-    vpextrq rdi, xmm1, 0
+    vpcmpeqd ymm0, ymm0, ymm0
+    vpsrld ymm0, ymm0, 31
+    vpextrq rax, xmm0, 0
+    vpextrq rdi, xmm0, 0
     lea rsi, [rsp-48]
 
     ; mov rdx, 42
@@ -550,19 +550,43 @@ _start:
     jmp .exit1
 
 .atoi:
-    xor rbx, rbx
+    vpxor ymm5, ymm5, ymm5 ; ymm5 stores the result of the atoi function
     lea rdi, [rsp-192]
 
 .atoiloop:
     movzx rax, byte [rdi]
-    sub rax, '0'
-    imul rbx, rbx, 10
-    add rbx, rax
-    inc rdi
+    vmovq xmm0, rax
+    vinserti128 ymm0, ymm0, xmm0, 0
 
+    ; sub rax, '0'
+    mov rax, 0x30 ; '0'
+    vmovq xmm1, rax
+    vinserti128 ymm1, ymm1, xmm1, 0
+    vpsubq ymm0, ymm0, ymm1
+
+    ; imul rbx, rbx, 10
+    mov rax, 10
+    vmovq xmm2, rax
+    vinserti128 ymm2, ymm2, xmm2, 0
+    vpmulld ymm5, ymm5, ymm2
+
+    ; add rbx, rax
+    vpaddd ymm5, ymm5, ymm0
+
+    ; inc rdi
+    vpxor ymm1, ymm1, ymm1
+    vpcmpeqq ymm0, ymm1, ymm1
+    vpsrlq ymm0, ymm0, 63
+    vmovq xmm1, rdi
+    vinserti128 ymm1, ymm1, xmm1, 0
+    vpaddd ymm1, ymm1, ymm0
+    vpextrq rdi, xmm1, 0
+
+    ; Check if the next byte is a newline
     cmp byte [rdi], 10
     je .verify
 
+    ; Check if next byte is null
     cmp byte [rdi], 0
     jne .atoiloop
 
@@ -570,7 +594,6 @@ _start:
 .verify:
     vmovd xmm0, [rel .fnv1a_offset_basis]
     vmovd xmm1, [rel .fnv1a_prime]
-    vpxor xmm3, xmm3, xmm3
     lea rdi, [rsp-128]
 
 .fnv1a_loop:
@@ -582,23 +605,30 @@ _start:
     vpinsrb xmm2, xmm2, byte [rdi], 0
     vpxor xmm0, xmm0, xmm2
     vpmulld xmm0, xmm0, xmm1
-    inc rdi
+
+    ; inc rdi
+    vpxor ymm2, ymm2, ymm2
+    vpcmpeqq ymm2, ymm2, ymm2
+    vpsrlq ymm2, ymm2, 63
+    vmovq xmm4, rdi
+    vinserti128 ymm4, ymm4, xmm4, 0
+    vpaddd ymm4, ymm4, ymm2
+    vpextrq rdi, xmm4, 0
     jmp .fnv1a_loop
 
 .fnv1a_done:
     vmovd xmm1, [rel .xor_key]
     vpxor xmm0, xmm0, xmm1
-    vmovq xmm1, rbx
-    vpxor xmm0, xmm0, xmm1
+    vpxor xmm0, xmm0, xmm5
     vptest xmm0, xmm0
     jz .correct
 
 .incorrect:
     vpxor ymm0, ymm0, ymm0
-    vpcmpeqd ymm1, ymm0, ymm0
-    vpsrld ymm1, ymm1, 31
-    vpextrq rax, xmm1, 0
-    vpextrq rdi, xmm1, 0
+    vpcmpeqd ymm0, ymm0, ymm0
+    vpsrld ymm0, ymm0, 31
+    vpextrq rax, xmm0, 0
+    vpextrq rdi, xmm0, 0
     lea rsi, [rsp-32]
 
     ; mov rdx, 24
@@ -649,17 +679,17 @@ _start:
     vpextrq rax, xmm1, 0
 
     vpxor ymm0, ymm0, ymm0
-    vpcmpeqd ymm1, ymm0, ymm0
-    vpsrld ymm1, ymm1, 31
-    vpextrq rdi, xmm1, 0
+    vpcmpeqd ymm0, ymm0, ymm0
+    vpsrld ymm0, ymm0, 31
+    vpextrq rdi, xmm0, 0
     syscall
 
 .correct:
     vpxor ymm0, ymm0, ymm0
-    vpcmpeqd ymm1, ymm0, ymm0
-    vpsrld ymm1, ymm1, 31
-    vpextrq rax, xmm1, 0
-    vpextrq rdi, xmm1, 0
+    vpcmpeqd ymm0, ymm0, ymm0
+    vpsrld ymm0, ymm0, 31
+    vpextrq rax, xmm0, 0
+    vpextrq rdi, xmm0, 0
     lea rsi, [rsp-40]
 
     ; mov rdx, 34
@@ -728,6 +758,7 @@ _start:
 ; IDA will be able to generate a CFG for the code above
 .helper_byte:
     db 0
+    ; db 0xC3
 
 .xor_key:
     db "CYBERSCI_REGIONALS_2025"
