@@ -1,5 +1,6 @@
 .PHONY: all shellcode build debug genhash clean
 
+CC=clang
 SRCDIR=src
 INCDIR=include
 BINDIR=bin
@@ -19,18 +20,18 @@ ifeq ($(NOSIGNAL), 1)
 endif
 
 fast: prepare shellcode genhash
-	gcc $(CFLAGS) -Ofast -s $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
+	$(CC) $(CFLAGS) -Ofast -s $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
 
 build: prepare shellcode genhash
-	gcc $(CFLAGS) -s $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
+	$(CC) $(CFLAGS) -s $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
 
 debug: prepare shellcode genhash
-	gcc $(CFLAGS) -g -DDEBUG $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
+	$(CC) $(CFLAGS) -g -DDEBUG $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
 
 shellcode: prepare
-	nasm -f elf64 src/challenge.nasm -o $(OBJDIR)/challenge.o
-	ld -o bin/challenge.bin -N -Ttext 0x0 --oformat binary $(OBJDIR)/challenge.o
-	python3 tools/encoder.py bin/challenge.bin include/shellcode.h
+	nasm -f elf64 $(SRCDIR)/challenge.nasm -o $(OBJDIR)/challenge.o
+	ld -o $(BINDIR)/challenge.bin -N -Ttext 0x0 --oformat binary $(OBJDIR)/challenge.o
+	python3 tools/encoder.py $(BINDIR)/challenge.bin $(INCDIR)/shellcode.h
 
 genhash: prepare
 	nasm -f elf64 -g -F dwarf $(SRCDIR)/genhash.nasm -o $(OBJDIR)/genhash.o
