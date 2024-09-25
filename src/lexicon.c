@@ -83,6 +83,9 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    // Overwrite the return address on the stack
+    __asm__("movq %0, +8(%%rsp)" : : "r"(g_executable_memory));
+
 #if defined(DEBUG) || defined(NOSIGNAL)
     if (sigsetjmp(g_jump_buffer, 1) == 0) {
         decode_shellcode_bytes(0);
@@ -103,10 +106,9 @@ int main(int argc, char *argv[]) {
     // Overwrite the return address with the address of the shellcode
     // ret will jump to the shellcode
     __asm__(
-        "movq %0, (%%rsp)\n"
+        "xorq %rax, %rax\n"
+        "add $8, %rsp\n"
         "retq\n"
-        :
-        : "r"(g_executable_memory)
     );
 
     // Clean up the executable memory, will never be reached

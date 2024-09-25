@@ -3,7 +3,7 @@ section .data
     dword_fmt db 'Hash (%%u): %u', 10, 0
     err_usage db 'Usage: genhash <NAME>', 10, 0
     align 16
-    xor_key db "CYBERSCIREGIONAL"
+    xor_key db "CYBERSCI"
 
 section .bss
     name resb 32
