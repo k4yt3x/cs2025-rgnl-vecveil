@@ -1,5 +1,4 @@
-#include "lexicon.h"
-#include "shellcode.h"
+#include "lexivectors.h"
 
 #include <assert.h>
 #include <fcntl.h>
@@ -12,6 +11,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include "shellcode.h"
 
 // Ensure that the lookup table size is at least 256 elements
 // 256 elements are required to map all bytes from 0x00 to 0xFF

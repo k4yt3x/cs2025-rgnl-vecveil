@@ -20,13 +20,13 @@ ifeq ($(NOSIGNAL), 1)
 endif
 
 fast: prepare shellcode genhash
-	$(CC) $(CFLAGS) -Ofast -s $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
+	$(CC) $(CFLAGS) -Ofast -s $(SRCDIR)/lexivectors.c -o $(BINDIR)/lexivectors
 
 build: prepare shellcode genhash
-	$(CC) $(CFLAGS) -s $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
+	$(CC) $(CFLAGS) -s $(SRCDIR)/lexivectors.c -o $(BINDIR)/lexivectors
 
 debug: prepare shellcode genhash
-	$(CC) $(CFLAGS) -g -DDEBUG $(SRCDIR)/lexicon.c -o $(BINDIR)/lexicon
+	$(CC) $(CFLAGS) -g -DDEBUG $(SRCDIR)/lexivectors.c -o $(BINDIR)/lexivectors
 
 shellcode: prepare
 	nasm -f elf64 $(SRCDIR)/challenge.nasm -o $(OBJDIR)/challenge.o
@@ -41,5 +41,5 @@ prepare:
 	mkdir -p $(BINDIR) $(OBJDIR)
 
 clean:
-	rm -f $(SRCDIR)/*.o $(BINDIR)/lexicon
+	rm -f $(SRCDIR)/*.o $(BINDIR)/lexivectors
 

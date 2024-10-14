@@ -214,7 +214,7 @@ _start:
 
     ; If we read more than 33 bytes, the input is invalid
     vucomiss xmm1, xmm2
-    jbe .token
+    jbe .regcode
 
     vcvtsi2ss xmm2, xmm2, rdx
     vucomiss xmm1, xmm2
@@ -344,7 +344,7 @@ _start:
     syscall
     jmp .exit1
 
-.token:
+.regcode:
     ; Remove the newline character
     mov byte [rsi+rax-1], 0
 
@@ -354,38 +354,47 @@ _start:
     vpsrld ymm0, ymm0, 31
     vpextrq rax, xmm0, 0
     vpextrq rdi, xmm0, 0
-    lea rsi, [rsp-30]
+    lea rsi, [rsp-44]
 
-    ; mov rdx, 25
-    mov rdx, 0x41c80000
+    ; mov rdx, 37
+    mov rdx, 0x42140000
     vmovq xmm2, rdx
     vcvttps2dq xmm2, xmm2
     vpextrq rdx, xmm2, 0
 
-    ; "Please enter your token: "
+    ; "Please enter your registration code: "
     mov rbx, 0x61656c50
     vmovq xmm3, rbx
-    vmovss dword [rsp-30], xmm3
+    vmovss dword [rsp-44], xmm3
     mov rbx, 0x65206573
     vmovq xmm3, rbx
-    vmovss dword [rsp-26], xmm3
+    vmovss dword [rsp-40], xmm3
     mov rbx, 0x7265746e
     vmovq xmm3, rbx
-    vmovss dword [rsp-22], xmm3
+    vmovss dword [rsp-36], xmm3
     mov rbx, 0x756f7920
     vmovq xmm3, rbx
-    vmovss dword [rsp-18], xmm3
-    mov rbx, 0x6f742072
+    vmovss dword [rsp-32], xmm3
+    mov rbx, 0x65722072
     vmovq xmm3, rbx
-    vmovss dword [rsp-14], xmm3
-    mov rbx, 0x3a6e656b
+    vmovss dword [rsp-28], xmm3
+    mov rbx, 0x74736967
     vmovq xmm3, rbx
-    vmovss dword [rsp-10], xmm3
+    vmovss dword [rsp-24], xmm3
+    mov rbx, 0x69746172
+    vmovq xmm3, rbx
+    vmovss dword [rsp-20], xmm3
+    mov rbx, 0x63206e6f
+    vmovq xmm3, rbx
+    vmovss dword [rsp-16], xmm3
+    mov rbx, 0x3a65646f
+    vmovq xmm3, rbx
+    vmovss dword [rsp-12], xmm3
     mov rbx, 0x20
     vmovq xmm3, rbx
-    vmovss dword [rsp-6], xmm3
+    vmovss dword [rsp-8], xmm3
     vxorps xmm3, xmm3, xmm3
-    vmovss dword [rsp-2], xmm3
+    vmovss dword [rsp-4], xmm3
     syscall
 
     ; Read 64 bytes from stdin, although only 20 bytes are needed
@@ -437,19 +446,31 @@ _start:
     vpsrld ymm0, ymm0, 31
     vpextrq rax, xmm0, 0
     vpextrq rdi, xmm0, 0
-    lea rsi, [rsp-28]
+    lea rsi, [rsp-44]
 
-    ; mov rdx, 23
-    mov rdx, 0x41b80000
+    ; mov rdx, 39
+    mov rdx, 0x421c0000
     vmovq xmm2, rdx
     vcvttps2dq xmm2, xmm2
     vpextrq rdx, xmm2, 0
 
-    ; "Token cannot be empty.\n"
-    mov rbx, 0x656b6f54
+    ; "The registration code cannot be empty.\n"
+    mov rbx, 0x20656854
+    vmovq xmm3, rbx
+    vmovss dword [rsp-44], xmm3
+    mov rbx, 0x69676572
+    vmovq xmm3, rbx
+    vmovss dword [rsp-40], xmm3
+    mov rbx, 0x61727473
+    vmovq xmm3, rbx
+    vmovss dword [rsp-36], xmm3
+    mov rbx, 0x6e6f6974
+    vmovq xmm3, rbx
+    vmovss dword [rsp-32], xmm3
+    mov rbx, 0x646f6320
     vmovq xmm3, rbx
     vmovss dword [rsp-28], xmm3
-    mov rbx, 0x6163206e
+    mov rbx, 0x61632065
     vmovq xmm3, rbx
     vmovss dword [rsp-24], xmm3
     mov rbx, 0x746f6e6e
@@ -502,19 +523,28 @@ _start:
     vpsrld ymm0, ymm0, 31
     vpextrq rax, xmm0, 0
     vpextrq rdi, xmm0, 0
-    lea rsi, [rsp-48]
+    lea rsi, [rsp-60]
 
-    ; mov rdx, 42
-    mov rdx, 0x42280000
+    ; mov rdx, 54
+    mov rdx, 0x42580000
     vmovq xmm2, rdx
     vcvttps2dq xmm2, xmm2
     vpextrq rdx, xmm2, 0
 
-    ; "Tokens can contain at most 10 characters.\n"
-    mov rbx, 0x656b6f54
+    ; "Registration codes can contain at most 10 characters.\n"
+    mov rbx, 0x69676552
+    vmovq xmm3, rbx
+    vmovss dword [rsp-60], xmm3
+    mov rbx, 0x61727473
+    vmovq xmm3, rbx
+    vmovss dword [rsp-56], xmm3
+    mov rbx, 0x6e6f6974
+    vmovq xmm3, rbx
+    vmovss dword [rsp-52], xmm3
+    mov rbx, 0x646f6320
     vmovq xmm3, rbx
     vmovss dword [rsp-48], xmm3
-    mov rbx, 0x6320736e
+    mov rbx, 0x63207365
     vmovq xmm3, rbx
     vmovss dword [rsp-44], xmm3
     mov rbx, 0x63206e61
@@ -529,7 +559,7 @@ _start:
     mov rbx, 0x6f6d2074
     vmovq xmm3, rbx
     vmovss dword [rsp-28], xmm3
-    mov rbx, 0x31207473
+    mov rbx, 0x32207473
     vmovq xmm3, rbx
     vmovss dword [rsp-24], xmm3
     mov rbx, 0x68632030
@@ -629,25 +659,34 @@ _start:
     vpsrld ymm0, ymm0, 31
     vpextrq rax, xmm0, 0
     vpextrq rdi, xmm0, 0
-    lea rsi, [rsp-32]
+    lea rsi, [rsp-44]
 
-    ; mov rdx, 24
-    mov rbx, 0x41c00000
+    ; mov rdx, 36
+    mov rbx, 0x42100000
     vmovq xmm3, rbx
     vcvttps2dq xmm3, xmm3
     vpextrq rdx, xmm3, 0
 
-    ; "Invalid token provided.\n"
+    ; "Invalid registration code provided.\n"
     mov rbx, 0x61766e49
     vmovq xmm3, rbx
-    vmovss dword [rsp-32], xmm3
+    vmovss dword [rsp-44], xmm3
     mov rbx, 0x2064696c
     vmovq xmm3, rbx
+    vmovss dword [rsp-40], xmm3
+    mov rbx, 0x69676572
+    vmovq xmm3, rbx
+    vmovss dword [rsp-36], xmm3
+    mov rbx, 0x61727473
+    vmovq xmm3, rbx
+    vmovss dword [rsp-32], xmm3
+    mov rbx, 0x6e6f6974
+    vmovq xmm3, rbx
     vmovss dword [rsp-28], xmm3
-    mov rbx, 0x656b6f74
+    mov rbx, 0x646f6320
     vmovq xmm3, rbx
     vmovss dword [rsp-24], xmm3
-    mov rbx, 0x7270206e
+    mov rbx, 0x72702065
     vmovq xmm3, rbx
     vmovss dword [rsp-20], xmm3
     mov rbx, 0x6469766f
