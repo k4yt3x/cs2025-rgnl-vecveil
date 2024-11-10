@@ -139,10 +139,10 @@ _start:
 
     ; Check the exit code of the child process
     ; Jump to an invalid address if debugger is detected
-    lea rax, [rel .name]
+    lea rbx, [rel .name]
     vmovss xmm0, [rsp-8]
     vptest xmm0, xmm0
-    cmovne rax, rsp
+    cmove rax, rbx
     jmp rax
 
 .name:

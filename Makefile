@@ -1,45 +1,21 @@
-.PHONY: all shellcode build debug genhash clean
+.PHONY: all build vecveil genhash prepare cleanup
 
-CC=clang
 SRCDIR=src
-INCDIR=include
 BINDIR=bin
 OBJDIR=obj
-CFLAGS=-Wall -fPIC -I$(INCDIR)
 
-# specify DJB2=1 to enable DJB2 hashing lookup
-DJB2=1
-ifeq ($(DJB2), 1)
-	CFLAGS+=-DDJB2
-endif
+build: prepare vecveil genhash cleanup
 
-# specify NOSIGNAL=1 to disable signal handler abuse
-NOSIGNAL=0
-ifeq ($(NOSIGNAL), 1)
-	CFLAGS+=-DNOSIGNAL
-endif
+vecveil:
+	nasm -f elf64 $(SRCDIR)/vecveil.nasm -o $(OBJDIR)/vecveil.o
+	ld -o $(BINDIR)/vecveil -s $(OBJDIR)/vecveil.o
 
-fast: prepare shellcode genhash
-	$(CC) $(CFLAGS) -Ofast -s $(SRCDIR)/lexivectors.c -o $(BINDIR)/lexivectors
-
-build: prepare shellcode genhash
-	$(CC) $(CFLAGS) -s $(SRCDIR)/lexivectors.c -o $(BINDIR)/lexivectors
-
-debug: prepare shellcode genhash
-	$(CC) $(CFLAGS) -g -DDEBUG $(SRCDIR)/lexivectors.c -o $(BINDIR)/lexivectors
-
-shellcode: prepare
-	nasm -f elf64 $(SRCDIR)/challenge.nasm -o $(OBJDIR)/challenge.o
-	ld -o $(BINDIR)/challenge.bin -N -Ttext 0x0 --oformat binary $(OBJDIR)/challenge.o
-	python3 tools/encoder.py $(BINDIR)/challenge.bin $(INCDIR)/shellcode.h
-
-genhash: prepare
+genhash:
 	nasm -f elf64 -g -F dwarf $(SRCDIR)/genhash.nasm -o $(OBJDIR)/genhash.o
 	ld -lc -I /lib64/ld-linux-x86-64.so.2 -o $(BINDIR)/genhash $(OBJDIR)/genhash.o
 
 prepare:
 	mkdir -p $(BINDIR) $(OBJDIR)
 
-clean:
-	rm -f $(SRCDIR)/*.o $(BINDIR)/lexivectors
-
+cleanup:
+	rm -rf $(OBJDIR)
